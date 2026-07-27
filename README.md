@@ -204,7 +204,7 @@ Configure these GitHub Actions repository secrets before running the workflow:
 | Secret | Value |
 | --- | --- |
 | `DOCKERHUB_USERNAME` | Docker Hub username with push access to the repository |
-| `DOCKERHUB_TOKEN` | Docker Hub access token with read/write permission |
+| `DOCKERHUB_TOKEN` | Docker Hub access token with read/write/delete permission |
 
 Each deployment generates its own SSH host keys in the mounted host directory
 on first startup. No private keys or reusable SSH host keys are stored in the
