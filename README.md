@@ -180,7 +180,7 @@ the mounted agent for its public-key list when authenticating a login.
 
 ## Publish to Docker Hub
 
-The image is named `cawad/codex-sandbox:latest`:
+The image repository is `cawad/codex-sandbox`:
 
 ```bash
 docker login
@@ -192,9 +192,12 @@ The GitHub Actions workflow in `.github/workflows/docker-publish.yml`
 automatically builds and pushes the image:
 
 - A push to `main`, including a pull request merge, publishes
-  `cawad/codex-sandbox:latest`.
-- A pushed Git tag publishes the same tag, such as
-  `cawad/codex-sandbox:v1.2.3`.
+  `cawad/codex-sandbox:main`.
+- A pushed tag matching `v*.*.*` publishes the version tag and `latest`, such
+  as `cawad/codex-sandbox:v1.2.3` and `cawad/codex-sandbox:latest`.
+
+Published images are signed through Sigstore using GitHub's OpenID Connect
+identity.
 
 Configure these GitHub Actions repository secrets before running the workflow:
 
