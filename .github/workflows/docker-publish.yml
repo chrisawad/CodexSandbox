@@ -2,13 +2,10 @@ name: Publish Docker image
 
 on:
   push:
-    tags:
-      - "*"
-  pull_request:
     branches:
       - main
-    types:
-      - closed
+    tags:
+      - "*"
 
 permissions:
   contents: read
@@ -19,7 +16,6 @@ concurrency:
 
 jobs:
   publish:
-    if: github.event_name == 'push' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
@@ -41,7 +37,7 @@ jobs:
         with:
           images: cawad/codex-sandbox
           tags: |
-            type=raw,value=latest,enable=${{ github.event_name == 'pull_request' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=ref,event=tag
 
       - name: Build and push image
