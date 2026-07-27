@@ -1,0 +1,15 @@
+default_permissions = "workspace-only"
+approval_policy = "never"
+
+[permissions.workspace-only]
+description = "Restrict sandboxed commands to the active workspace."
+extends = ":workspace"
+
+[permissions.workspace-only.filesystem]
+":root" = "deny"
+":minimal" = "read"
+":tmpdir" = "deny"
+":slash_tmp" = "deny"
+
+[permissions.workspace-only.filesystem.":workspace_roots"]
+".env" = "deny"

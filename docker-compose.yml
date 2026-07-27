@@ -1,0 +1,33 @@
+services:
+  sandbox:
+    build:
+      context: .
+      pull: true
+    image: chrisawad/nginx-codex-ssh-sandbox:latest
+    container_name: nginx-ssh
+    restart: unless-stopped
+    # Codex's bubblewrap sandbox must create its own user and mount namespaces.
+    security_opt:
+      - seccomp=unconfined
+    ports:
+      - "${NGINX_HOST_HTTP_PORT:-8080}:80"
+      - "${NGINX_HOST_HTTPS_PORT:-4443}:443"
+      - "${SSHD_PORT:-2222}:22"
+    environment:
+      NGINX_HOST_HTTP_PORT: "${NGINX_HOST_HTTP_PORT:-8080}"
+      NGINX_HOST_HTTPS_PORT: "${NGINX_HOST_HTTPS_PORT:-4443}"
+      GIT_CONFIG_USER_NAME: "${GIT_CONFIG_USER_NAME:-Codex Sandbox}"
+      GIT_CONFIG_USER_EMAIL: "${GIT_CONFIG_USER_EMAIL:-}"
+      # NGINX_SSL_CERTIFICATE: /etc/nginx/ssl/custom.crt
+      # NGINX_SSL_CERTIFICATE_KEY: /etc/nginx/ssl/custom.key
+      # NGINX_WEB_ROOT: /srv/www
+    volumes:
+      - ${SSH_AUTH_SOCK}:/run/host-services/ssh-auth.sock
+      - ./state/codex:/root/.codex:rw
+      - ./state/ssh-host-keys:/etc/ssh/host-keys:rw
+      - ./workspaces:/workspaces
+      - ./agents/AGENTS.md:/workspaces/AGENTS.md:ro
+      - ./agents/HOSTING.md:/workspaces/HOSTING.md:ro
+      # - ./certs/server.crt:/etc/nginx/ssl/custom.crt:ro
+      # - ./certs/server.key:/etc/nginx/ssl/custom.key:ro
+      # - ./html:/srv/www:ro

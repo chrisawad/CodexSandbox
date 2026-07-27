@@ -1,0 +1,7 @@
+.git
+.env
+README.md
+docker-compose.yml
+certs
+state/codex
+state/ssh-host-keys

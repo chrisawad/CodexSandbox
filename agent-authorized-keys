@@ -1,0 +1,4 @@
+#!/bin/sh
+
+export SSH_AUTH_SOCK="${SSH_AUTH_SOCK:-/run/host-services/ssh-auth.sock}"
+exec /usr/bin/ssh-add -L 2>/dev/null
