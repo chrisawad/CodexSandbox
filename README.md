@@ -191,7 +191,8 @@ docker push cawad/codex-sandbox:latest
 The GitHub Actions workflow in `.github/workflows/docker-publish.yml`
 automatically builds and pushes the image:
 
-- A pull request merged into `main` publishes `cawad/codex-sandbox:latest`.
+- A push to `main`, including a pull request merge, publishes
+  `cawad/codex-sandbox:latest`.
 - A pushed Git tag publishes the same tag, such as
   `cawad/codex-sandbox:v1.2.3`.
 
