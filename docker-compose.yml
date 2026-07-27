@@ -3,7 +3,7 @@ services:
     build:
       context: .
       pull: true
-    image: chrisawad/nginx-codex-ssh-sandbox:latest
+    image: cawad/codex-sandbox:latest
     container_name: nginx-ssh
     restart: unless-stopped
     # Codex's bubblewrap sandbox must create its own user and mount namespaces.

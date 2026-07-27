@@ -161,7 +161,7 @@ The bundled self-signed certificate is intended only as a working default.
 ## Run without Compose
 
 ```bash
-docker build -t chrisawad/nginx-ssh:latest .
+docker build -t cawad/codex-sandbox:latest .
 docker run --rm \
   --name nginx-ssh \
   -p 8080:80 \
@@ -172,7 +172,7 @@ docker run --rm \
   -v "$SSH_AUTH_SOCK:/run/host-services/ssh-auth.sock" \
   -v "./state/codex:/root/.codex:rw" \
   -v "./state/ssh-host-keys:/etc/ssh/host-keys:rw" \
-  chrisawad/nginx-ssh:latest
+  cawad/codex-sandbox:latest
 ```
 
 The entrypoint does not copy, validate, or modify SSH login keys. OpenSSH asks
@@ -180,14 +180,27 @@ the mounted agent for its public-key list when authenticating a login.
 
 ## Publish to Docker Hub
 
-Docker Hub repository names are lowercase, so the valid image name is
-`chrisawad/nginx-ssh`:
+The image is named `cawad/codex-sandbox:latest`:
 
 ```bash
 docker login
-docker build --pull -t chrisawad/nginx-ssh:latest .
-docker push chrisawad/nginx-ssh:latest
+docker build --pull -t cawad/codex-sandbox:latest .
+docker push cawad/codex-sandbox:latest
 ```
+
+The GitHub Actions workflow in `.github/workflows/docker-publish.yml`
+automatically builds and pushes the image:
+
+- A pull request merged into `main` publishes `cawad/codex-sandbox:latest`.
+- A pushed Git tag publishes the same tag, such as
+  `cawad/codex-sandbox:v1.2.3`.
+
+Configure these GitHub Actions repository secrets before running the workflow:
+
+| Secret | Value |
+| --- | --- |
+| `DOCKERHUB_USERNAME` | Docker Hub username with push access to the repository |
+| `DOCKERHUB_TOKEN` | Docker Hub access token with read/write permission |
 
 Each deployment generates its own SSH host keys in the mounted host directory
 on first startup. No private keys or reusable SSH host keys are stored in the
