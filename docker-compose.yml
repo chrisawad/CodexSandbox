@@ -13,6 +13,10 @@ services:
       - "${NGINX_HOST_HTTP_PORT:-8080}:80"
       - "${NGINX_HOST_HTTPS_PORT:-4443}:443"
       - "${SSHD_PORT:-2222}:22"
+    # First-time SSH connection
+    # Run `ssh -p 2222 root@127.0.0.1` from the same host environment as the
+    # client, then review and accept the host key before using Codex Desktop.
+    # If SSHD_PORT is overridden, use that host port instead of 2222.
     environment:
       NGINX_HOST_HTTP_PORT: "${NGINX_HOST_HTTP_PORT:-8080}"
       NGINX_HOST_HTTPS_PORT: "${NGINX_HOST_HTTPS_PORT:-4443}"
