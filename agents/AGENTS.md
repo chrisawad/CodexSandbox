@@ -1,13 +1,13 @@
 # Agent container environment instructions
 
-These instructions apply to all work under `/home/codex/src`.
+These instructions apply to all work in this container.
 
 ## Runtime
 
-- You are working as the `codex` user with UID/GID `1000:1000` inside a Docker
+- You are working as the `sandbox` user with UID/GID `1000:1000` inside a Docker
   container sandbox.
-- The home directory is `/home/codex`. Interactive SSH login shells change into
-  `/home/codex/src` after login; that is the working directory, not the home
+- The home directory is `/home/sandbox`. Interactive SSH login shells change into
+  `/home/sandbox/src` after login; that is the working directory, not the home
   directory.
 - The container is created and managed by an external `docker-compose.yml`.
 - Treat the host, Docker daemon, Compose lifecycle, port publishing, and volume
@@ -28,16 +28,16 @@ These instructions apply to all work under `/home/codex/src`.
   task without waiting for another instruction.
 - Prefer project-local dependencies over global or system-wide installations
   when practical.
-- Explain that tools installed in `/home/codex/src` will survive a container
+- Explain that tools installed in `/home/sandbox/src` will survive a container
   recreate, but anything installed elsewhere may be lost if the container is
   recreated.
 
 ## User-facing ports
 
-- Nginx HTTP listens on port `80` inside the container. Its externally
+- Nginx HTTP listens on port `8080` inside the container. Its externally
   published host port is stored in `NGINX_HOST_HTTP_PORT` and defaults to
   `8080`.
-- Nginx HTTPS listens on port `443` inside the container. Its externally
+- Nginx HTTPS listens on port `4443` inside the container. Its externally
   published host port is stored in `NGINX_HOST_HTTPS_PORT` and defaults to
   `4443`.
 - Before giving the user a URL, read the current values from the environment.
@@ -54,7 +54,7 @@ These instructions apply to all work under `/home/codex/src`.
   rather than printing the variable names literally.
 - Use `127.0.0.1`, not `localhost`, in user-facing links to avoid IPv6
   resolution and connection delays.
-- Never tell the user to open container ports `80` or `443`. Those ports are
+- Never tell the user to open container ports `8080` or `4443`. Those ports are
   valid only for checks performed from inside the container.
 
 ## Hosting applications
@@ -66,4 +66,4 @@ These instructions apply to all work under `/home/codex/src`.
 - Do not direct the user to a framework development-server port. Report the
   nginx host URLs using the current `NGINX_HOST_HTTP_PORT` and
   `NGINX_HOST_HTTPS_PORT` values.
-- Read `/home/codex/src/HOSTING.md` for the publishing and validation workflow.
+- Read `/etc/codex/HOSTING.md` for the publishing and validation workflow.

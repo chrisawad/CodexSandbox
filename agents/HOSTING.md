@@ -8,8 +8,8 @@ application for testing.
 
 | Protocol | Container listener | Host-port environment variable | Default |
 | --- | ---: | --- | ---: |
-| HTTP | `80` | `NGINX_HOST_HTTP_PORT` | `8080` |
-| HTTPS | `443` | `NGINX_HOST_HTTPS_PORT` | `4443` |
+| HTTP | `8080` | `NGINX_HOST_HTTP_PORT` | `8080` |
+| HTTPS | `4443` | `NGINX_HOST_HTTPS_PORT` | `4443` |
 
 Container ports are useful for internal diagnostics only. Before reporting a
 URL, read the current host ports from the environment:
@@ -23,8 +23,9 @@ printf 'HTTPS: https://127.0.0.1:%s\n' "$https_port"
 
 Always provide the resolved IPv4 host URLs to the user. Do not substitute
 `localhost`, because it can resolve to IPv6 and cause connection delays. Never
-use container ports `80` or `443` in a user-facing URL. The default HTTPS
-certificate is self-signed, so a browser may display a certificate warning.
+assume container ports `8080` or `4443` are the externally published ports in a
+user-facing URL. The default HTTPS certificate is self-signed, so a browser may
+display a certificate warning.
 
 ## Web root
 
@@ -46,8 +47,8 @@ external Compose deployment overrides it.
    distribution. Copy the distribution's contents, not the containing
    directory, so its `index.html` is at the web root.
 4. Validate the nginx configuration with `nginx -t`.
-5. Test HTTP internally through nginx on `http://127.0.0.1:80`. Test HTTPS on
-   `https://127.0.0.1:443` when relevant, allowing for the self-signed
+5. Test HTTP internally through nginx on `http://127.0.0.1:8080`. Test HTTPS on
+   `https://127.0.0.1:4443` when relevant, allowing for the self-signed
    certificate.
 6. Read `NGINX_HOST_HTTP_PORT` and `NGINX_HOST_HTTPS_PORT`, then tell the user
    to open the corresponding `127.0.0.1` URL.
