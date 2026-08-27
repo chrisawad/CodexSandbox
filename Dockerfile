@@ -20,10 +20,14 @@ RUN apt-get update \
         nodejs \
         openssh-server \
         openssl \
+        util-linux \
     && rm -rf /var/lib/apt/lists/* \
     && rm -f /etc/ssh/ssh_host_* \
-    && mkdir -p /run/sshd /root/.ssh /root/.codex /etc/ssh/host-keys /etc/nginx/ssl /workspaces \
-    && chmod 0700 /root/.ssh /root/.codex \
+    && groupadd --gid 1000 codex \
+    && useradd --uid 1000 --gid 1000 --create-home --shell /bin/bash codex \
+    && mkdir -p /run/sshd /home/codex/.ssh /home/codex/.codex /home/codex/src /etc/ssh/host-keys /etc/nginx/ssl \
+    && chmod 0700 /home/codex/.ssh /home/codex/.codex \
+    && chown -R codex:codex /home/codex "${NGINX_WEB_ROOT}" \
     && openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 3650 \
         -keyout "${NGINX_SSL_CERTIFICATE_KEY}" \
         -out "${NGINX_SSL_CERTIFICATE}" \
@@ -34,9 +38,9 @@ RUN apt-get update \
 
 COPY sshd_config.conf /etc/ssh/sshd_config.d/99-container.conf
 COPY default.conf.template /etc/nginx/templates/default.conf.template
-# COPY --chmod=0600 codex-config.toml /root/.codex/config.toml
-COPY agents/AGENTS.md agents/HOSTING.md /workspaces/
-COPY --chmod=0644 bash_profile /root/.bash_profile
+# COPY --chown=1000:1000 --chmod=0600 codex-config.toml /home/codex/.codex/config.toml
+COPY --chown=1000:1000 agents/AGENTS.md agents/HOSTING.md /home/codex/src/
+COPY --chown=1000:1000 --chmod=0644 bash_profile /home/codex/.bash_profile
 COPY agent-authorized-keys /usr/local/bin/agent-authorized-keys
 COPY docker-entrypoint.sh /usr/local/bin/nginx-ssh-entrypoint
 COPY --from=codex-installer /usr/local/lib/node_modules/@openai/codex /usr/local/lib/node_modules/@openai/codex
@@ -49,7 +53,7 @@ EXPOSE 22 80 443
 
 STOPSIGNAL SIGTERM
 
-WORKDIR /workspaces
+WORKDIR /home/codex/src
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
     CMD nginx -t && /usr/sbin/sshd -t && kill -0 "$(cat /run/sshd.pid)"

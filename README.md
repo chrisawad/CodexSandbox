@@ -36,9 +36,9 @@ services:
       GIT_CONFIG_USER_EMAIL: "${GIT_CONFIG_USER_EMAIL:-}"
     volumes:
       - ${SSH_AUTH_SOCK}:/run/host-services/ssh-auth.sock
-      - ./states/codex:/root/.codex
+      - ./states/codex:/home/codex/.codex
       - ./states/ssh-host-keys:/etc/ssh/host-keys
-      - ./states/workspaces:/workspaces
+      - ./states/workspaces:/home/codex/src
 ```
 
 The loopback-only port bindings keep SSH and nginx accessible from the host
@@ -69,7 +69,7 @@ Run this command from the same operating environment and user account that
 will run the SSH client:
 
 ```bash
-ssh -p 2222 root@127.0.0.1
+ssh -p 2222 codex@127.0.0.1
 ```
 
 Review and accept the host-key prompt. OpenSSH saves trust for the exact
@@ -89,7 +89,7 @@ Use the value of `SSHD_PORT` instead of `2222` if you changed the default.
 Give this deployment its own Codex login:
 
 ```bash
-docker exec -it nginx-ssh codex login --device-auth
+docker exec -it --user codex nginx-ssh codex login --device-auth
 ```
 
 The login is saved in the persistent `./states/codex` directory.
@@ -97,11 +97,11 @@ The login is saved in the persistent `./states/codex` directory.
 ### 5. Connect Codex Desktop
 
 In Codex Desktop, open **Settings > Connections**, add a connection for
-`127.0.0.1:2222`, and select a project under `/workspaces`.
+`127.0.0.1:2222`, and select a project under `/home/codex/src`.
 
 ## Using the container
 
-An interactive SSH login starts in `/workspaces`. The
+An interactive SSH login starts in `/home/codex/src`. The
 `./states/workspaces` directory keeps projects across container updates and
 recreations. Codex is available as:
 
@@ -115,8 +115,9 @@ The forwarded host agent is available inside SSH sessions. Verify it with:
 ssh-add -L
 ```
 
-Root keeps its normal home directory at `/root`. Codex state is stored in
-`/root/.codex`, separately from project files.
+The login user is `codex` with UID/GID `1000:1000` and home directory
+`/home/codex`. Codex state is stored in `/home/codex/.codex`, separately from
+project files.
 
 ### Nginx endpoints
 
@@ -212,7 +213,7 @@ copy of a private client key.
 Trust the exact IP address and port from the environment running Codex Desktop:
 
 ```bash
-ssh -p 2222 root@127.0.0.1
+ssh -p 2222 codex@127.0.0.1
 ```
 
 If the persisted server identity was intentionally replaced, verify the new
@@ -223,14 +224,14 @@ On Windows, run these commands in PowerShell:
 
 ```powershell
 ssh-keygen -R "[127.0.0.1]:2222" -f "$env:USERPROFILE\.ssh\known_hosts"
-ssh -p 2222 root@127.0.0.1
+ssh -p 2222 codex@127.0.0.1
 ```
 
 On Linux or macOS, run:
 
 ```bash
 ssh-keygen -R "[127.0.0.1]:2222" -f "$HOME/.ssh/known_hosts"
-ssh -p 2222 root@127.0.0.1
+ssh -p 2222 codex@127.0.0.1
 ```
 
 Do not remove a changed host key until you have confirmed why it changed.
@@ -253,7 +254,7 @@ Confirm the host agent contains the public key that the client is offering:
 
 ```bash
 ssh-add -L
-ssh -v -p 2222 root@127.0.0.1
+ssh -v -p 2222 codex@127.0.0.1
 ```
 
 ### HTTPS displays a certificate warning
@@ -282,9 +283,9 @@ Important implementation files include:
 
 - `Dockerfile`: installs OpenSSH, Codex, GitHub CLI, Git, and bubblewrap on nginx
 - `docker-entrypoint.sh`: configures Git, creates persistent SSH host keys, and starts SSH plus nginx
-- `sshd_config.conf`: enforces key-only root login and agent-backed authorized keys
+- `sshd_config.conf`: limits key-only SSH login to `codex` and uses agent-backed authorized keys
 - `default.conf.template`: configures nginx HTTP, HTTPS, and the web root
-- `agents/`: instructions installed into `/workspaces`
+- `agents/`: instructions installed into `/home/codex/src`
 
 Codex uses bubblewrap on Linux. The service sets
 `security_opt: seccomp=unconfined` so bubblewrap can create nested user and
