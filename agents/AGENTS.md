@@ -1,13 +1,14 @@
 # Agent container environment instructions
 
-These instructions apply to all work under `/workspaces`.
+These instructions apply to all work under `/home/codex/src`.
 
 ## Runtime
 
-- You are working as `root` inside a Docker container sandbox.
-- Root's home directory is `/root`. Interactive SSH login shells change into
-  `/workspaces` after login; `/workspaces` is the working directory, not the
-  home directory.
+- You are working as the `codex` user with UID/GID `1000:1000` inside a Docker
+  container sandbox.
+- The home directory is `/home/codex`. Interactive SSH login shells change into
+  `/home/codex/src` after login; that is the working directory, not the home
+  directory.
 - The container is created and managed by an external `docker-compose.yml`.
 - Treat the host, Docker daemon, Compose lifecycle, port publishing, and volume
   configuration as external infrastructure. Do not assume the Compose file is
@@ -27,7 +28,9 @@ These instructions apply to all work under `/workspaces`.
   task without waiting for another instruction.
 - Prefer project-local dependencies over global or system-wide installations
   when practical.
-- Explain that tools installed in /workspaces will survive a container recreate, but anything installed elsewhere may be lost if the container is recreated.
+- Explain that tools installed in `/home/codex/src` will survive a container
+  recreate, but anything installed elsewhere may be lost if the container is
+  recreated.
 
 ## User-facing ports
 
@@ -63,4 +66,4 @@ These instructions apply to all work under `/workspaces`.
 - Do not direct the user to a framework development-server port. Report the
   nginx host URLs using the current `NGINX_HOST_HTTP_PORT` and
   `NGINX_HOST_HTTPS_PORT` values.
-- Read `/workspaces/HOSTING.md` for the publishing and validation workflow.
+- Read `/home/codex/src/HOSTING.md` for the publishing and validation workflow.

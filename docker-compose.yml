@@ -14,7 +14,7 @@ services:
       - "${NGINX_HOST_HTTPS_PORT:-4443}:443"
       - "${SSHD_PORT:-2222}:22"
     # First-time SSH connection
-    # Run `ssh -p 2222 root@127.0.0.1` from the same host environment as the
+    # Run `ssh -p 2222 codex@127.0.0.1` from the same host environment as the
     # client, then review and accept the host key before using Codex Desktop.
     # If SSHD_PORT is overridden, use that host port instead of 2222.
     environment:
@@ -27,11 +27,11 @@ services:
       # NGINX_WEB_ROOT: /srv/www
     volumes:
       - ${SSH_AUTH_SOCK}:/run/host-services/ssh-auth.sock
-      - ./state/codex:/root/.codex:rw
+      - ./state/codex:/home/codex/.codex:rw
       - ./state/ssh-host-keys:/etc/ssh/host-keys:rw
-      - ./workspaces:/workspaces
-      - ./agents/AGENTS.md:/workspaces/AGENTS.md:ro
-      - ./agents/HOSTING.md:/workspaces/HOSTING.md:ro
+      - ./workspaces:/home/codex/src
+      - ./agents/AGENTS.md:/home/codex/src/AGENTS.md:ro
+      - ./agents/HOSTING.md:/home/codex/src/HOSTING.md:ro
       # - ./certs/server.crt:/etc/nginx/ssl/custom.crt:ro
       # - ./certs/server.key:/etc/nginx/ssl/custom.key:ro
       # - ./html:/srv/www:ro

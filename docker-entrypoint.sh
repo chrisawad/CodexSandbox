@@ -20,6 +20,9 @@ trap cleanup EXIT INT TERM QUIT
 
 readonly ssh_host_key_dir=/etc/ssh/host-keys
 readonly ssh_runtime_env_config=/etc/ssh/sshd_config.d/98-runtime-env.conf
+readonly login_user=codex
+readonly login_home=/home/codex
+readonly source_dir=/home/codex/src
 
 : "${NGINX_HOST_HTTP_PORT:=8080}"
 : "${NGINX_HOST_HTTPS_PORT:=4443}"
@@ -40,10 +43,16 @@ validate_host_port() {
 validate_host_port NGINX_HOST_HTTP_PORT "$NGINX_HOST_HTTP_PORT"
 validate_host_port NGINX_HOST_HTTPS_PORT "$NGINX_HOST_HTTPS_PORT"
 
-git config --global user.name "$GIT_CONFIG_USER_NAME"
+install -d -o "$login_user" -g "$login_user" -m 0700 "$login_home/.codex"
+chown -R "$login_user:$login_user" "$login_home/.codex"
+install -d -o "$login_user" -g "$login_user" -m 0755 "$source_dir"
+
+runuser --user "$login_user" -- env HOME="$login_home" \
+    git config --global user.name "$GIT_CONFIG_USER_NAME"
 
 if [[ -n "$GIT_CONFIG_USER_EMAIL" ]]; then
-    git config --global user.email "$GIT_CONFIG_USER_EMAIL"
+    runuser --user "$login_user" -- env HOME="$login_home" \
+        git config --global user.email "$GIT_CONFIG_USER_EMAIL"
 fi
 
 printf 'SetEnv SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock NGINX_HOST_HTTP_PORT=%s NGINX_HOST_HTTPS_PORT=%s\n' \
