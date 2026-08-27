@@ -1,6 +1,6 @@
 server {
-    listen 80;
-    listen [::]:80;
+    listen 8080;
+    listen [::]:8080;
     server_name _;
 
     root ${NGINX_WEB_ROOT};
@@ -12,8 +12,8 @@ server {
 }
 
 server {
-    listen 443 ssl;
-    listen [::]:443 ssl;
+    listen 4443 ssl;
+    listen [::]:4443 ssl;
     server_name _;
 
     root ${NGINX_WEB_ROOT};

@@ -10,11 +10,11 @@ services:
     security_opt:
       - seccomp=unconfined
     ports:
-      - "${NGINX_HOST_HTTP_PORT:-8080}:80"
-      - "${NGINX_HOST_HTTPS_PORT:-4443}:443"
-      - "${SSHD_PORT:-2222}:22"
+      - "${NGINX_HOST_HTTP_PORT:-8080}:8080"
+      - "${NGINX_HOST_HTTPS_PORT:-4443}:4443"
+      - "${SSHD_PORT:-2222}:2222"
     # First-time SSH connection
-    # Run `ssh -p 2222 codex@127.0.0.1` from the same host environment as the
+    # Run `ssh -p 2222 sandbox@127.0.0.1` from the same host environment as the
     # client, then review and accept the host key before using Codex Desktop.
     # If SSHD_PORT is overridden, use that host port instead of 2222.
     environment:
@@ -27,11 +27,9 @@ services:
       # NGINX_WEB_ROOT: /srv/www
     volumes:
       - ${SSH_AUTH_SOCK}:/run/host-services/ssh-auth.sock
-      - ./state/codex:/home/codex/.codex:rw
-      - ./state/ssh-host-keys:/etc/ssh/host-keys:rw
-      - ./workspaces:/home/codex/src
-      - ./agents/AGENTS.md:/home/codex/src/AGENTS.md:ro
-      - ./agents/HOSTING.md:/home/codex/src/HOSTING.md:ro
+      - ./state/codex:/home/sandbox/.codex:rw
+      - ./state/ssh-host-keys:/home/sandbox/.ssh/host-keys:rw
+      - ./workspaces:/home/sandbox/src
       # - ./certs/server.crt:/etc/nginx/ssl/custom.crt:ro
       # - ./certs/server.key:/etc/nginx/ssl/custom.key:ro
       # - ./html:/srv/www:ro

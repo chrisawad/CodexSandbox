@@ -18,11 +18,9 @@ cleanup() {
 
 trap cleanup EXIT INT TERM QUIT
 
-readonly ssh_host_key_dir=/etc/ssh/host-keys
-readonly ssh_runtime_env_config=/etc/ssh/sshd_config.d/98-runtime-env.conf
-readonly login_user=codex
-readonly login_home=/home/codex
-readonly source_dir=/home/codex/src
+readonly ssh_host_key_dir=/home/sandbox/.ssh/host-keys
+readonly sandbox_home=/home/sandbox
+readonly source_dir=/home/sandbox/src
 
 : "${NGINX_HOST_HTTP_PORT:=8080}"
 : "${NGINX_HOST_HTTPS_PORT:=4443}"
@@ -43,22 +41,20 @@ validate_host_port() {
 validate_host_port NGINX_HOST_HTTP_PORT "$NGINX_HOST_HTTP_PORT"
 validate_host_port NGINX_HOST_HTTPS_PORT "$NGINX_HOST_HTTPS_PORT"
 
-install -d -o "$login_user" -g "$login_user" -m 0700 "$login_home/.codex"
-chown -R "$login_user:$login_user" "$login_home/.codex"
-install -d -o "$login_user" -g "$login_user" -m 0755 "$source_dir"
+install -d -m 0700 "$sandbox_home/.codex" "$ssh_host_key_dir"
+install -d -m 0755 "$sandbox_home/.cache/nginx" "$source_dir"
 
-runuser --user "$login_user" -- env HOME="$login_home" \
-    git config --global user.name "$GIT_CONFIG_USER_NAME"
-
-if [[ -n "$GIT_CONFIG_USER_EMAIL" ]]; then
-    runuser --user "$login_user" -- env HOME="$login_home" \
-        git config --global user.email "$GIT_CONFIG_USER_EMAIL"
+if [[ ! -e "$sandbox_home/.codex/AGENTS.md" && ! -L "$sandbox_home/.codex/AGENTS.md" ]]; then
+    ln -s /etc/codex/AGENTS.md "$sandbox_home/.codex/AGENTS.md"
 fi
 
-printf 'SetEnv SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock NGINX_HOST_HTTP_PORT=%s NGINX_HOST_HTTPS_PORT=%s\n' \
-    "$NGINX_HOST_HTTP_PORT" "$NGINX_HOST_HTTPS_PORT" >"$ssh_runtime_env_config"
+git config --global user.name "$GIT_CONFIG_USER_NAME"
 
-install -d -m 0700 "$ssh_host_key_dir"
+if [[ -n "$GIT_CONFIG_USER_EMAIL" ]]; then
+    git config --global user.email "$GIT_CONFIG_USER_EMAIL"
+fi
+
+readonly ssh_session_environment="SSH_AUTH_SOCK=/run/host-services/ssh-auth.sock NGINX_HOST_HTTP_PORT=$NGINX_HOST_HTTP_PORT NGINX_HOST_HTTPS_PORT=$NGINX_HOST_HTTPS_PORT"
 
 generate_host_key() {
     local key_type=$1
@@ -79,9 +75,9 @@ generate_host_key() {
 generate_host_key ed25519 "$ssh_host_key_dir/ssh_host_ed25519_key"
 generate_host_key rsa "$ssh_host_key_dir/ssh_host_rsa_key" -b 3072
 
-/usr/sbin/sshd -t
+/usr/sbin/sshd -t -o "SetEnv=$ssh_session_environment"
 
-/usr/sbin/sshd -D -e &
+/usr/sbin/sshd -D -e -o "SetEnv=$ssh_session_environment" &
 service_pids+=("$!")
 
 /docker-entrypoint.sh nginx -g 'daemon off;' &

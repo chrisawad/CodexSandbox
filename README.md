@@ -26,9 +26,9 @@ services:
     security_opt:
       - seccomp=unconfined
     ports:
-      - "127.0.0.1:${NGINX_HOST_HTTP_PORT:-8080}:80"
-      - "127.0.0.1:${NGINX_HOST_HTTPS_PORT:-4443}:443"
-      - "127.0.0.1:${SSHD_PORT:-2222}:22"
+      - "127.0.0.1:${NGINX_HOST_HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${NGINX_HOST_HTTPS_PORT:-4443}:4443"
+      - "127.0.0.1:${SSHD_PORT:-2222}:2222"
     environment:
       NGINX_HOST_HTTP_PORT: "${NGINX_HOST_HTTP_PORT:-8080}"
       NGINX_HOST_HTTPS_PORT: "${NGINX_HOST_HTTPS_PORT:-4443}"
@@ -36,9 +36,9 @@ services:
       GIT_CONFIG_USER_EMAIL: "${GIT_CONFIG_USER_EMAIL:-}"
     volumes:
       - ${SSH_AUTH_SOCK}:/run/host-services/ssh-auth.sock
-      - ./states/codex:/home/codex/.codex
-      - ./states/ssh-host-keys:/etc/ssh/host-keys
-      - ./states/workspaces:/home/codex/src
+      - ./states/codex:/home/sandbox/.codex
+      - ./states/ssh-host-keys:/home/sandbox/.ssh/host-keys
+      - ./states/workspaces:/home/sandbox/src
 ```
 
 The loopback-only port bindings keep SSH and nginx accessible from the host
@@ -50,9 +50,23 @@ If you do not already have a running SSH agent, start one and load the key that
 you want to use for both container login and outbound SSH connections:
 
 ```bash
+mkdir -p states/codex states/ssh-host-keys states/workspaces
 eval "$(ssh-agent -s)"
 ssh-add "$HOME/.ssh/id_ed25519"
 docker compose up -d
+```
+
+The container runs entirely as UID/GID `1000:1000`. Creating the bind-mount
+directories before starting Compose ensures they belong to the host user rather
+than being created as root by the Docker daemon. The forwarded SSH agent socket
+must also be accessible to UID `1000`.
+
+When upgrading state created by an older root-based version of this image on a
+Linux host, update the existing bind-mount ownership once before starting the
+new container:
+
+```bash
+sudo chown -R 1000:1000 states/codex states/ssh-host-keys states/workspaces
 ```
 
 Compose pulls `cawad/codex-sandbox:latest` from Docker Hub the first time it
@@ -69,7 +83,7 @@ Run this command from the same operating environment and user account that
 will run the SSH client:
 
 ```bash
-ssh -p 2222 codex@127.0.0.1
+ssh -p 2222 sandbox@127.0.0.1
 ```
 
 Review and accept the host-key prompt. OpenSSH saves trust for the exact
@@ -89,7 +103,7 @@ Use the value of `SSHD_PORT` instead of `2222` if you changed the default.
 Give this deployment its own Codex login:
 
 ```bash
-docker exec -it --user codex nginx-ssh codex login --device-auth
+docker exec -it nginx-ssh codex login --device-auth
 ```
 
 The login is saved in the persistent `./states/codex` directory.
@@ -97,11 +111,11 @@ The login is saved in the persistent `./states/codex` directory.
 ### 5. Connect Codex Desktop
 
 In Codex Desktop, open **Settings > Connections**, add a connection for
-`127.0.0.1:2222`, and select a project under `/home/codex/src`.
+`127.0.0.1:2222`, and select a project under `/home/sandbox/src`.
 
 ## Using the container
 
-An interactive SSH login starts in `/home/codex/src`. The
+An interactive SSH login starts in `/home/sandbox/src`. The
 `./states/workspaces` directory keeps projects across container updates and
 recreations. Codex is available as:
 
@@ -115,9 +129,9 @@ The forwarded host agent is available inside SSH sessions. Verify it with:
 ssh-add -L
 ```
 
-The login user is `codex` with UID/GID `1000:1000` and home directory
-`/home/codex`. Codex state is stored in `/home/codex/.codex`, separately from
-project files.
+The container process and SSH login user are both `sandbox` with UID/GID
+`1000:1000` and home directory `/home/sandbox`. Codex state is stored in
+`/home/sandbox/.codex`, separately from project files.
 
 ### Nginx endpoints
 
@@ -183,7 +197,8 @@ volumes:
 
 Use a certificate issued for the hostname through which users will access
 nginx. The bundled self-signed certificate is intended only as a working
-default.
+default. Custom certificate files must be readable by UID `1000` inside the
+container.
 
 ## Persistent data and security
 
@@ -213,7 +228,7 @@ copy of a private client key.
 Trust the exact IP address and port from the environment running Codex Desktop:
 
 ```bash
-ssh -p 2222 codex@127.0.0.1
+ssh -p 2222 sandbox@127.0.0.1
 ```
 
 If the persisted server identity was intentionally replaced, verify the new
@@ -224,14 +239,14 @@ On Windows, run these commands in PowerShell:
 
 ```powershell
 ssh-keygen -R "[127.0.0.1]:2222" -f "$env:USERPROFILE\.ssh\known_hosts"
-ssh -p 2222 codex@127.0.0.1
+ssh -p 2222 sandbox@127.0.0.1
 ```
 
 On Linux or macOS, run:
 
 ```bash
 ssh-keygen -R "[127.0.0.1]:2222" -f "$HOME/.ssh/known_hosts"
-ssh -p 2222 codex@127.0.0.1
+ssh -p 2222 sandbox@127.0.0.1
 ```
 
 Do not remove a changed host key until you have confirmed why it changed.
@@ -254,7 +269,7 @@ Confirm the host agent contains the public key that the client is offering:
 
 ```bash
 ssh-add -L
-ssh -v -p 2222 codex@127.0.0.1
+ssh -v -p 2222 sandbox@127.0.0.1
 ```
 
 ### HTTPS displays a certificate warning
@@ -274,6 +289,7 @@ current `nginx:latest` base, and uses bind-mounted state and workspace
 directories:
 
 ```bash
+mkdir -p state/codex state/ssh-host-keys workspaces
 eval "$(ssh-agent -s)"
 ssh-add "$HOME/.ssh/id_ed25519"
 docker compose up --build -d
@@ -283,9 +299,9 @@ Important implementation files include:
 
 - `Dockerfile`: installs OpenSSH, Codex, GitHub CLI, Git, and bubblewrap on nginx
 - `docker-entrypoint.sh`: configures Git, creates persistent SSH host keys, and starts SSH plus nginx
-- `sshd_config.conf`: limits key-only SSH login to `codex` and uses agent-backed authorized keys
+- `sshd_config.conf`: limits key-only SSH login to `sandbox` and uses agent-backed authorized keys
 - `default.conf.template`: configures nginx HTTP, HTTPS, and the web root
-- `agents/`: instructions installed into `/home/codex/src`
+- `agents/`: global container instructions installed under `/etc/codex`
 
 Codex uses bubblewrap on Linux. The service sets
 `security_opt: seccomp=unconfined` so bubblewrap can create nested user and
