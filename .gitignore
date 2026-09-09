@@ -1,6 +1,4 @@
 /.agents/
 /.codex/
 /.env
-/state/codex/
-/state/ssh-host-keys/
-/workspaces/
+/state/

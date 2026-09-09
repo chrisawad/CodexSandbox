@@ -1,77 +1,96 @@
-FROM node:22-bookworm-slim AS codex-installer
+# syntax=docker/dockerfile:1
 
-RUN npm install --global @openai/codex@latest \
-    && npm cache clean --force
+FROM node:22-trixie-slim
 
-FROM nginx:latest
+# Retain apt downloads in locked BuildKit caches as recommended by Docker:
+# https://docs.docker.com/reference/dockerfile/#example-cache-apt-packages
+RUN --mount=type=cache,id=codex-sandbox-apt-packages,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=codex-sandbox-apt-metadata,target=/var/lib/apt,sharing=locked \
+    rm -f /etc/apt/apt.conf.d/docker-clean \
+    && printf '%s\n' \
+        'Binary::apt::APT::Keep-Downloaded-Packages "true";' \
+        >/etc/apt/apt.conf.d/keep-cache \
+    && apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+        ca-certificates \
+        wget \
+    && install -d -m 0755 /etc/apt/keyrings /etc/apt/sources.list.d \
+    && wget -qO /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+        https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+    && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+    && printf 'deb [arch=%s signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main\n' \
+        "$(dpkg --print-architecture)" \
+        >/etc/apt/sources.list.d/github-cli.list
 
-ENV NGINX_SSL_CERTIFICATE=/etc/nginx/ssl/nginx-selfsigned.crt \
-    NGINX_SSL_CERTIFICATE_KEY=/etc/nginx/ssl/nginx-selfsigned.key \
-    NGINX_WEB_ROOT=/usr/share/nginx/html \
-    NGINX_HOST_HTTP_PORT=8080 \
-    NGINX_HOST_HTTPS_PORT=4443 \
-    NGINX_ENVSUBST_FILTER=^NGINX_ \
-    HOME=/home/sandbox
-
-RUN apt-get update \
+RUN --mount=type=cache,id=codex-sandbox-apt-packages,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,id=codex-sandbox-apt-metadata,target=/var/lib/apt,sharing=locked \
+    apt-get update \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         bubblewrap \
+        docker-buildx \
+        docker-cli \
+        docker-compose \
         gh \
         git \
-        nodejs \
         openssh-server \
-        openssl \
-    && rm -rf /var/lib/apt/lists/* \
-    && rm -f /etc/ssh/ssh_host_* \
-    && groupadd --gid 1000 sandbox \
-    && useradd --uid 1000 --gid 1000 --home-dir /home/sandbox --create-home --shell /bin/bash sandbox \
-    && passwd --delete sandbox \
-    && mkdir -p /run/host-services /home/sandbox/.cache/nginx /home/sandbox/.ssh/host-keys /home/sandbox/.codex /home/sandbox/src /etc/codex /etc/nginx/ssl \
-    && chmod 0700 /home/sandbox/.ssh /home/sandbox/.ssh/host-keys /home/sandbox/.codex \
-    && openssl req -x509 -nodes -newkey rsa:2048 -sha256 -days 3650 \
-        -keyout "${NGINX_SSL_CERTIFICATE_KEY}" \
-        -out "${NGINX_SSL_CERTIFICATE}" \
-        -subj "/CN=localhost" \
-        -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
-    && chmod 0600 "${NGINX_SSL_CERTIFICATE_KEY}" \
-    && chmod 0644 "${NGINX_SSL_CERTIFICATE}" \
-    && rm -f /etc/nginx/conf.d/default.conf \
-    && sed -i \
-        -e 's/^user  nginx;/# The container runtime selects the non-root user./' \
-        -e 's#^pid        /run/nginx.pid;#pid        /home/sandbox/.cache/nginx/nginx.pid;#' \
-        /etc/nginx/nginx.conf \
-    && chown -R sandbox:sandbox \
-        /run/host-services \
-        /home/sandbox \
-        /etc/nginx/conf.d \
-        /etc/nginx/ssl \
-        /var/cache/nginx \
-        "${NGINX_WEB_ROOT}"
+        sudo \
+        vim \
+    && gh --version \
+    && docker --version \
+    && docker buildx version \
+    && docker compose version
 
-COPY sshd_config.conf /etc/ssh/sshd_config.d/99-container.conf
-COPY default.conf.template /etc/nginx/templates/default.conf.template
-COPY agents/AGENTS.md agents/HOSTING.md /etc/codex/
-# COPY --chown=1000:1000 --chmod=0600 codex-config.toml /home/sandbox/.codex/config.toml
-COPY --chown=1000:1000 --chmod=0644 bash_profile /home/sandbox/.bash_profile
-COPY agent-authorized-keys /usr/local/bin/agent-authorized-keys
-COPY docker-entrypoint.sh /usr/local/bin/nginx-ssh-entrypoint
-COPY --from=codex-installer /usr/local/lib/node_modules/@openai/codex /usr/local/lib/node_modules/@openai/codex
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-RUN ln -s ../lib/node_modules/@openai/codex/bin/codex.js /usr/local/bin/codex \
-    && ln -s /etc/codex/AGENTS.md /home/sandbox/.codex/AGENTS.md \
-    && chown -h sandbox:sandbox /home/sandbox/.codex/AGENTS.md \
-    && chmod 0755 /usr/local/bin/agent-authorized-keys /usr/local/bin/nginx-ssh-entrypoint \
+ENV UV_PYTHON_INSTALL_DIR=/opt/uv/python \
+    UV_PYTHON_BIN_DIR=/usr/local/bin
+
+RUN uv python install 3.12 --default \
+    && uv --version \
+    && python --version \
+    && python3 --version \
+    && python3.12 --version
+
+RUN npm install --global @openai/codex@latest \
+    && npm cache clean --force \
     && codex --version
 
-EXPOSE 2222 8080 4443
+RUN rm -f /etc/ssh/ssh_host_* \
+    && groupmod --new-name sandbox node \
+    && usermod --login sandbox --home /home/sandbox --move-home --shell /bin/bash node \
+    && passwd --delete sandbox \
+    && printf '%s\n' 'sandbox ALL=(ALL:ALL) NOPASSWD: ALL' >/etc/sudoers.d/sandbox \
+    && chmod 0440 /etc/sudoers.d/sandbox \
+    && /usr/sbin/visudo --check --file=/etc/sudoers.d/sandbox \
+    && install -d -m 0755 /run/host-services /run/sshd \
+    && install -D -m 0644 /home/sandbox/.bashrc /etc/setup/bashrc \
+    && su --shell /bin/sh --command 'sudo -n true' sandbox
+
+# SSH_AUTH_SOCK contains only a Unix socket path, never key material.
+ENV HOME=/home/sandbox \
+    SSH_AUTH_SOCK=/ssh-auth.sock \
+    DOCKER_HOST=tcp://docker:2376 \
+    DOCKER_TLS_VERIFY=1 \
+    DOCKER_CERT_PATH=/certs/client \
+    INTERNAL_SERVICE_PORT=3000 \
+    EXTERNAL_SERVICE_PORT=3000
+
+COPY sshd_config.conf /etc/ssh/sshd_config.d/99-container.conf
+COPY --chmod=0644 agents/AGENTS.md /etc/setup/AGENTS.md
+COPY --chmod=0644 codex-config.toml /etc/setup/codex-config.toml
+COPY --chmod=0644 bash_profile /etc/setup/bash_profile
+COPY --chmod=0755 agent-authorized-keys /usr/local/bin/agent-authorized-keys
+COPY --chmod=0755 docker-entrypoint.sh /docker-entrypoint.sh
+
+EXPOSE 2222
 
 STOPSIGNAL SIGTERM
 
-WORKDIR /home/sandbox/src
+WORKDIR /home/sandbox
 
-USER sandbox:sandbox
+USER sandbox
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD nginx -t && /usr/sbin/sshd -t && kill -0 "$(cat /home/sandbox/.cache/sshd.pid)" && kill -0 "$(cat /home/sandbox/.cache/nginx/nginx.pid)"
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD docker info >/dev/null && /usr/sbin/sshd -t && kill -0 "$(cat /home/sandbox/.cache/sshd.pid)"
 
-ENTRYPOINT ["/usr/local/bin/nginx-ssh-entrypoint"]
+ENTRYPOINT ["/docker-entrypoint.sh"]
