@@ -1,15 +1,8 @@
-default_permissions = "workspace-only"
-approval_policy = "never"
+# ~/.codex/config.toml
 
-[permissions.workspace-only]
-description = "Restrict sandboxed commands to the active workspace."
-extends = ":workspace"
-
-[permissions.workspace-only.filesystem]
-":root" = "deny"
-":minimal" = "read"
-":tmpdir" = "deny"
-":slash_tmp" = "deny"
-
-[permissions.workspace-only.filesystem.":workspace_roots"]
-".env" = "deny"
+# Request approval when an action needs to cross the sandbox boundary.
+approval_policy = "on-request"
+# Use the automated AI reviewer for eligible approval requests.
+approvals_reviewer = "auto_review"
+# Use the container itself as the isolation boundary.
+sandbox_mode = "danger-full-access"
