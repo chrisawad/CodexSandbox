@@ -414,7 +414,7 @@ docker compose up --build -d
 
 Important implementation files:
 
-- `Dockerfile`: installs Codex, `uv`, a uv-managed Python 3.12, OpenSSH, the Docker CLI, Git, sudo, Vim, and bubblewrap, plus the current stable GitHub CLI from GitHub's official apt repository
+- `Dockerfile`: installs Codex, `uv`, a uv-managed Python 3.12, OpenSSH, the Docker CLI, Git, sudo, Vim, and bubblewrap, plus the current stable GitHub CLI from GitHub's official apt repository; also supplies ripgrep, curl, unzip/zip, jq, file, less, shfmt, lsof, iproute2, ping, and sqlite3 for development and troubleshooting
 - `docker-compose.yml`: runs the privileged Docker daemon sidecar and shares its TLS client credentials
 - `docker-entrypoint.sh`: initializes an empty persistent home, configures Git, and then replaces itself with SSH
 - `sshd_config.conf`: limits key-only login to `sandbox` and permits agent and TCP forwarding

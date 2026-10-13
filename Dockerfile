@@ -35,6 +35,18 @@ RUN --mount=type=cache,id=codex-sandbox-apt-packages,target=/var/cache/apt,shari
         openssh-server \
         sudo \
         vim \
+        ripgrep \
+        curl \
+        unzip \
+        zip \
+        jq \
+        file \
+        less \
+        shfmt \
+        lsof \
+        iproute2 \
+        iputils-ping \
+        sqlite3 \
     && gh --version \
     && docker --version \
     && docker buildx version \
